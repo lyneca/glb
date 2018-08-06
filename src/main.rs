@@ -7,7 +7,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate clap;
 
-use clap::{App, ArgMatches};
+use clap::{App, AppSettings, ArgMatches};
 use std::env;
 use std::fs;
 use std::process;
@@ -102,9 +102,13 @@ fn write_config(config: Config) {
 
 fn main() {
     let cli_yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(cli_yaml).get_matches();
     let yaml: Config = serde_yaml::from_str(&read_config())
-        .expect("Invalid configuration file");
+        .expect("Invalid configuration file.");
+    let app = App::from_yaml(cli_yaml)
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::ColoredHelp)
+        .setting(AppSettings::ColorAlways);
+    let matches = app.get_matches();
     match matches.subcommand() {
         ("get", Some(args)) => get(yaml, args),
         ("set", Some(args)) => set(yaml, args),
