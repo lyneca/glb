@@ -28,7 +28,7 @@ struct Config {
 fn get_config_path() -> String {
     match env::var("CONFIG_FILE") {
         Ok(file) => file,
-        Err(_) => format!("{}/.config/glb.yaml", env::var("HOME").unwrap())
+        Err(_) => format!("{}/.config/glb.yml", env::var("HOME").unwrap())
     }
 }
 

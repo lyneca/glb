@@ -1,6 +1,7 @@
 name: glb
 version: "0.1.2"
 about: System config value manager
+after-help: The storage file is stored in $CONFIG_FILE, or $HOME/.config/glb.yml.
 subcommands:
     - get:
         about: Prints the value of a key
