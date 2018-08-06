@@ -1,0 +1,23 @@
+name: glb
+version: "0.1.2"
+about: System config value manager
+subcommands:
+    - get:
+        about: Prints the value of a key
+        args:
+            - key:
+                required: true
+    - set:
+        about: Sets the value of a key
+        args:
+            - key:
+                required: true
+            - value:
+                required: true
+    - del:
+        about: Removes a key from the database
+        args:
+            - key:
+                required: true
+    - list:
+        about: Lists all stored keys and values

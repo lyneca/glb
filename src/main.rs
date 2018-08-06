@@ -4,6 +4,10 @@ extern crate serde_yaml;
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate clap;
+
+use clap::{App, ArgMatches};
 use std::env;
 use std::fs;
 use std::process;
@@ -21,20 +25,24 @@ struct Config {
     values: Vec<KeyValue>
 }
 
-fn read_config() -> String {
-    let config_file_path = match env::var("CONFIG_FILE") {
+fn get_config_path() -> String {
+    match env::var("CONFIG_FILE") {
         Ok(file) => file,
-        Err(_) => format!("{}/.config/config.yaml", env::var("HOME").unwrap())
-    };
+        Err(_) => format!("{}/.config/glb.yaml", env::var("HOME").unwrap())
+    }
+}
+
+fn read_config() -> String {
+    let config_file_path = get_config_path();
     fs::read_to_string(&config_file_path)
         .expect(&format!("Couldn't find the file \"{}\"", config_file_path))
     
 }
 
-fn get(config: Config, args: Vec<String>) {
+fn get(config: Config, args: &ArgMatches) {
     let mut found = false;
-    for mut kv in config.values {
-        if kv.key == args[0] {
+    for kv in config.values {
+        if kv.key == args.value_of("key").unwrap() {
             println!("{}", kv.value);
             found = true;
         }
@@ -45,34 +53,47 @@ fn get(config: Config, args: Vec<String>) {
     }
 }
 
-fn set(mut config: Config, args: Vec<String>) {
+fn set(mut config: Config, args: &ArgMatches) {
     let mut found = false;
     for mut kv in &mut config.values {
-        if kv.key == args[0] {
-            kv.value = args[1].clone();
+        if kv.key == args.value_of("key").unwrap() {
+            kv.value = String::from(args.value_of("value").unwrap());
             found = true;
         }
     }
     if !found {
-        config.values.push(KeyValue { key: args[0].clone(), value: args[1].clone() });
+        config.values.push(KeyValue {
+            key: String::from(args.value_of("key").unwrap()), value: String::from(args.value_of("value").unwrap())
+        });
     }
     write_config(config)
 }
 
-fn help() {
-    println!("Usage: config <command> [OPTIONS...]");
-    println!("where <command> is one of:");
-    println!("    get, set\n");
-    println!("config get [key]          -- prints the value of [key]");
-    println!("config set [key] [value]  -- set the value of [key] to [value]\n");
-    println!("Values are stored in $HOME/.config/config.yaml, or in $CONFIG_FILE.");
+fn del(mut config: Config, args: &ArgMatches) {
+    let mut found = false;
+    let mut to_remove = 0;
+    for (i, kv) in config.values.iter().enumerate() {
+        if kv.key == args.value_of("key").unwrap() {
+            to_remove = i;
+            found = true;
+        }
+    }
+    if found {
+        config.values.remove(to_remove);
+    } else {
+        println!("Value \"{}\" not found.", args.value_of("key").unwrap());
+    }
+}
+
+fn list(config: Config) {
+    println!("Currently defined values:");
+    for kv in config.values {
+        println!(" - {}: {}", kv.key, kv.value);
+    }
 }
 
 fn write_config(config: Config) {
-    let config_file_path: String = match env::var("CONFIG_FILE") {
-        Ok(file) => file,
-        Err(_) => format!("{}/.config/config.yaml", env::var("HOME").unwrap())
-    };
+    let config_file_path = get_config_path();
     let mut config_file = File::create(&config_file_path)
         .expect(&format!("Couldn't find the file \"{}\"", config_file_path));
     config_file.write_all(serde_yaml::to_string(&config).unwrap().as_bytes())
@@ -80,21 +101,15 @@ fn write_config(config: Config) {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    match args.len() {
-        0 => panic!("Args is empty?"),
-        1 => {
-            help();
-            return
-        },
-        _ => {}
-    }
+    let cli_yaml = load_yaml!("cli.yml");
+    let matches = App::from_yaml(cli_yaml).get_matches();
     let yaml: Config = serde_yaml::from_str(&read_config())
         .expect("Invalid configuration file");
-    match args[1].as_str() {
-        "get" => get(yaml, args[2..].to_vec()),
-        "set" => set(yaml, args[2..].to_vec()),
-        "help" => help(),
+    match matches.subcommand() {
+        ("get", Some(args)) => get(yaml, args),
+        ("set", Some(args)) => set(yaml, args),
+        ("del", Some(args)) => del(yaml, args),
+        ("list", Some(_)) => list(yaml),
         _ => {}
     }
 }
