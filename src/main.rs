@@ -83,6 +83,7 @@ fn del(mut config: Config, args: &ArgMatches) {
     } else {
         println!("Value \"{}\" not found.", args.value_of("key").unwrap());
     }
+    write_config(config);
 }
 
 fn list(config: Config) {
